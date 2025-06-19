@@ -55,11 +55,12 @@ class TransactionDataProcessor:
     def preprocess_sequences(self, df: pd.DataFrame) -> List[Dict]:
         """Предобработка последовательностей транзакций"""
         processed_sequences = []
+        skipped_count = 0
         
         for _, row in df.iterrows():
             # Проверяем наличие NaN в target
             if pd.isna(row['target']):
-                print(f"Warning: NaN target found for client {row['client_id']}, skipping...")
+                skipped_count += 1
                 continue
                 
             # Извлекаем последовательности
@@ -69,7 +70,7 @@ class TransactionDataProcessor:
             
             # Проверяем на NaN в последовательностях
             if np.isnan(event_times).any() or np.isnan(amounts).any() or np.isnan(small_groups).any():
-                print(f"Warning: NaN values found in sequences for client {row['client_id']}, skipping...")
+                skipped_count += 1
                 continue
             
             # Ограничиваем длину последовательности
@@ -92,6 +93,8 @@ class TransactionDataProcessor:
                 'trx_count': int(row['trx_count']) if not pd.isna(row['trx_count']) else 0
             })
         
+        if skipped_count > 0:
+            print(f"Skipped {skipped_count} sequences with NaN values")
         print(f"Processed {len(processed_sequences)} valid sequences out of {len(df)} total")
         return processed_sequences
     
@@ -216,10 +219,74 @@ class TransactionDataProcessor:
         with open(f"{output_dir}/vocabulary.json", 'w') as f:
             json.dump(vocab_data, f, indent=2)
         
+        # Создаем файлы для SASRec
+        self.create_sasrec_files(output_dir)
+        
         print(f"Data saved to {output_dir}")
         print(f"Train samples: {len(train_data)}")
         print(f"Validation samples: {len(val_data)}")
         print(f"Test samples: {len(test_data)}")
+    
+    def create_sasrec_files(self, output_dir: str):
+        """Создание файлов необходимых для SASRec"""
+        import os
+        
+        # Создаем item_map.npy
+        item_map = {}
+        for group_id, idx in self.small_group_map.items():
+            item_map[group_id] = idx
+        
+        np.save(f"{output_dir}/item_map.npy", item_map)
+        
+        # Создаем item_map_reverse.npy
+        item_map_reverse = {}
+        for idx, group_id in self.small_group_map_reverse.items():
+            item_map_reverse[idx] = group_id
+        
+        np.save(f"{output_dir}/item_map_reverse.npy", item_map_reverse)
+        
+        # Создаем category_map.npy (аналогично item_map)
+        np.save(f"{output_dir}/category_map.npy", item_map)
+        
+        # Создаем title_maps.npy для совместимости
+        title_maps = {
+            'seqid2title': self.small_group_map_reverse,
+            'title2seqid': self.small_group_map
+        }
+        np.save(f"{output_dir}/title_maps.npy", title_maps)
+        
+        # Создаем файлы данных в формате SASRec
+        self.create_sasrec_data_files(output_dir)
+        
+        print(f"SASRec files created in {output_dir}")
+        print(f"Item map size: {len(item_map)}")
+    
+    def create_sasrec_data_files(self, output_dir: str):
+        """Создание файлов данных в формате SASRec"""
+        # Создаем последовательности для SASRec
+        train_sequences = []
+        for seq_data in self.train_sequences:
+            sequence = []
+            for trans in seq_data['sequence']:
+                item_id = self.small_group_map[trans['small_group']]
+                sequence.append(item_id)
+            train_sequences.append(sequence)
+        
+        # Сохраняем в формате numpy
+        np.save(f"{output_dir}/train.npy", train_sequences)
+        
+        # Создаем аналогично для test данных
+        test_sequences = []
+        for seq_data in self.test_sequences:
+            sequence = []
+            for trans in seq_data['sequence']:
+                item_id = self.small_group_map[trans['small_group']]
+                sequence.append(item_id)
+            test_sequences.append(sequence)
+        
+        np.save(f"{output_dir}/test.npy", test_sequences)
+        
+        print(f"Created SASRec data files: train.npy ({len(train_sequences)} sequences), test.npy ({len(test_sequences)} sequences)")
     
     def process_all_data(self, output_dir: str = "data/transactions"):
         """Полная обработка всех данных"""

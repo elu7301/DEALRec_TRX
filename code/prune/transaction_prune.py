@@ -102,9 +102,9 @@ def process_transaction_data(args):
         print(f"test_sequences length: {len(processor.test_sequences)}")
     
     # Обновляем пути для суррогатной модели
-    args.data_dir = args.processed_data_dir + "/"
+    args.data_dir = args.processed_data_dir  # Убираем лишний слэш
     args.data_name = "transactions"
-    args.data_file = args.data_dir + "train.json"
+    args.data_file = args.data_dir + "/train.json"
     
     return processor, train_data, val_data, test_data
 
