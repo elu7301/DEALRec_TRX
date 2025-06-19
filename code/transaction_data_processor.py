@@ -241,6 +241,13 @@ class TransactionDataProcessor:
         print("Splitting train/validation...")
         train_data, val_data = self.split_data(train_llm_data)
         
+        # Сохраняем атрибуты в объект для использования в других модулях
+        self.train_sequences = train_sequences
+        self.test_sequences = test_sequences
+        self.train_llm_data = train_data
+        self.val_llm_data = val_data
+        self.test_llm_data = test_llm_data
+        
         print("Saving processed data...")
         self.save_processed_data(train_data, val_data, test_llm_data, output_dir)
         

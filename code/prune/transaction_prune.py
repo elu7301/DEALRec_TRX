@@ -2,7 +2,14 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from transaction_data_processor import TransactionDataProcessor
+# Импортируем TransactionDataProcessor из правильного пути
+try:
+    from transaction_data_processor import TransactionDataProcessor
+except ImportError:
+    # Альтернативный путь импорта
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from code.transaction_data_processor import TransactionDataProcessor
+
 from surrogate import train
 from utils import get_args
 from influence_score import get_influence_score
@@ -85,6 +92,15 @@ def process_transaction_data(args):
     
     train_data, val_data, test_data = processor.process_all_data(args.processed_data_dir)
     
+    # Проверяем, что атрибуты созданы
+    print(f"Checking processor attributes...")
+    print(f"Has train_sequences: {hasattr(processor, 'train_sequences')}")
+    print(f"Has test_sequences: {hasattr(processor, 'test_sequences')}")
+    if hasattr(processor, 'train_sequences'):
+        print(f"train_sequences length: {len(processor.train_sequences)}")
+    if hasattr(processor, 'test_sequences'):
+        print(f"test_sequences length: {len(processor.test_sequences)}")
+    
     # Обновляем пути для суррогатной модели
     args.data_dir = args.processed_data_dir + "/"
     args.data_name = "transactions"
@@ -94,9 +110,18 @@ def process_transaction_data(args):
 
 def adapt_surrogate_for_transactions(args, processor):
     """Адаптация суррогатной модели для транзакционных данных"""
+    # Проверяем наличие атрибута train_sequences
+    if not hasattr(processor, 'train_sequences'):
+        raise AttributeError("processor.train_sequences not found. Make sure process_all_data() was called.")
+    
     # Создаем адаптированные аргументы для SASRec
     args.item_size = len(processor.small_group_map) + 1  # +1 для padding
     args.max_seq_length = processor.max_seq_length
+    
+    print(f"Adapting sequences for SASRec...")
+    print(f"Item size: {args.item_size}")
+    print(f"Max seq length: {args.max_seq_length}")
+    print(f"Number of sequences: {len(processor.train_sequences)}")
     
     # Создаем последовательности в формате, ожидаемом SASRec
     train_sequences = []
@@ -108,6 +133,7 @@ def adapt_surrogate_for_transactions(args, processor):
             sequence.append(item_id)
         train_sequences.append(sequence)
     
+    print(f"Converted {len(train_sequences)} sequences for SASRec")
     return train_sequences
 
 def main():
