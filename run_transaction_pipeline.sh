@@ -68,6 +68,24 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Шаг 5: Оценка качества эмбедингов
+echo ""
+echo "Step 5: Evaluating embedding quality..."
+python code/finetune/transaction_evaluate.py \
+    --base_model $base_model_path \
+    --lora_weights ./models/transactions/$n_fewshot \
+    --embeddings_path embeddings/train/transaction_embeddings.npy
+
+python code/finetune/transaction_evaluate.py \
+    --base_model $base_model_path \
+    --lora_weights ./models/transactions/$n_fewshot \
+    --embeddings_path embeddings/test/transaction_embeddings.npy
+
+if [ $? -ne 0 ]; then
+    echo "Error in embedding evaluation step"
+    exit 1
+fi
+
 echo ""
 echo "=== Pipeline completed successfully! ==="
 echo "Results saved in:"
@@ -75,4 +93,6 @@ echo "- Selected samples: code/prune/selected/transactions_$n_fewshot.pt"
 echo "- LLM model: models/transactions/$n_fewshot/"
 echo "- Train embeddings: embeddings/train/transaction_embeddings.npy"
 echo "- Test embeddings: embeddings/test/transaction_embeddings.npy"
+echo "- Train evaluation: embeddings/train/transaction_embeddings_evaluation.json"
+echo "- Test evaluation: embeddings/test/transaction_embeddings_evaluation.json"
 echo "========================================" 

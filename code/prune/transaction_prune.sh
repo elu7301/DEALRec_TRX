@@ -11,8 +11,6 @@ gpu_id=${4:-0}
 echo "Starting transaction data pruning..."
 echo "Parameters: lamda=$lamda, k=$k, n_fewshot=$n_fewshot, gpu_id=$gpu_id"
 
-cd code/prune/
-
 python transaction_prune.py \
     --train_parquet_dir ../../train_trx_file.parquet \
     --test_parquet_dir ../../test_trx_file.parquet \

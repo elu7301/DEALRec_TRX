@@ -26,8 +26,25 @@ from torch import nn
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 
 from transformers.debug_utils import DebugOption, DebugUnderflowOverflow
-from transformers.deepspeed import deepspeed_init, deepspeed_load_checkpoint
 
+# Условный импорт deepspeed
+try:
+    from transformers.deepspeed import deepspeed_init, deepspeed_load_checkpoint
+    DEEPSPEED_AVAILABLE = True
+except ImportError:
+    # Для новых версий transformers deepspeed может быть в другом месте
+    try:
+        from transformers.integrations.deepspeed import deepspeed_init, deepspeed_load_checkpoint
+        DEEPSPEED_AVAILABLE = True
+    except ImportError:
+        # Если deepspeed недоступен, создаем заглушки
+        def deepspeed_init(*args, **kwargs):
+            raise ImportError("DeepSpeed is not available. Please install deepspeed: pip install deepspeed")
+        
+        def deepspeed_load_checkpoint(*args, **kwargs):
+            raise ImportError("DeepSpeed is not available. Please install deepspeed: pip install deepspeed")
+        
+        DEEPSPEED_AVAILABLE = False
 
 from transformers.modeling_utils import unwrap_model
 from transformers.models.auto.modeling_auto import MODEL_FOR_CAUSAL_LM_MAPPING_NAMES
