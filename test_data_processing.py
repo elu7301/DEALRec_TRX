@@ -5,8 +5,12 @@
 
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# Добавляем текущую директорию в путь для импорта
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, current_dir)
+
+# Теперь импортируем модуль
 from code.transaction_data_processor import TransactionDataProcessor
 import json
 

@@ -57,10 +57,20 @@ class TransactionDataProcessor:
         processed_sequences = []
         
         for _, row in df.iterrows():
+            # Проверяем наличие NaN в target
+            if pd.isna(row['target']):
+                print(f"Warning: NaN target found for client {row['client_id']}, skipping...")
+                continue
+                
             # Извлекаем последовательности
             event_times = np.array(row['event_time'])
             amounts = np.array(row['amount_rur'])
             small_groups = np.array(row['small_group'])
+            
+            # Проверяем на NaN в последовательностях
+            if np.isnan(event_times).any() or np.isnan(amounts).any() or np.isnan(small_groups).any():
+                print(f"Warning: NaN values found in sequences for client {row['client_id']}, skipping...")
+                continue
             
             # Ограничиваем длину последовательности
             seq_length = min(len(event_times), self.max_seq_length)
@@ -79,9 +89,10 @@ class TransactionDataProcessor:
                 'client_id': row['client_id'],
                 'sequence': sequence,
                 'target': int(row['target']),
-                'trx_count': int(row['trx_count'])
+                'trx_count': int(row['trx_count']) if not pd.isna(row['trx_count']) else 0
             })
         
+        print(f"Processed {len(processed_sequences)} valid sequences out of {len(df)} total")
         return processed_sequences
     
     def create_vocabulary(self, sequences: List[Dict]):
@@ -109,7 +120,8 @@ class TransactionDataProcessor:
         self.target_encoder.fit(targets)
         
         print(f"Vocabulary size (small_groups): {len(self.small_group_map)}")
-        print(f"Amount range: {self.amount_scaler.data_min_[0]:.2f} - {self.amount_scaler.data_max_[0]:.2f}")
+        print(f"Amount range: {np.min(all_amounts):.2f} - {np.max(all_amounts):.2f}")
+        print(f"Amount mean: {self.amount_scaler.mean_[0]:.2f}, std: {self.amount_scaler.scale_[0]:.2f}")
         print(f"Target classes: {len(self.target_encoder.classes_)}")
     
     def tokenize_sequence(self, sequence: List[Dict]) -> Tuple[List[int], List[float], List[int]]:
